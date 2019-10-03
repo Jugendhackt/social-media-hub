@@ -3,6 +3,7 @@ import random
 import string
 import requests
 import mysql.connector
+import hashlib, binascii, os
 
 app = Flask(__name__)
 sessions = {}  # Session tokens store here
@@ -16,7 +17,7 @@ mydb = mysql.connector.connect(
 
 def insert_user(user,mail,pw):  # Debug function to add a user to database
     mycursor = mydb.cursor()
-
+    pw = hash_password(pw)
     sql = "INSERT INTO socialhub.users (username, mail, password) VALUES (%s, %s, %s)"
     val = (user, mail, pw)
     mycursor.execute(sql, val)
@@ -26,11 +27,12 @@ def insert_user(user,mail,pw):  # Debug function to add a user to database
 def getcorrect(user, pw):   # Returns exact 1 result if the credentials are correct
     mycursor = mydb.cursor()
 
-    mycursor.execute("SELECT * FROM socialhub.users WHERE username='" + user + "' AND password='" + pw + "';")
+    mycursor.execute("SELECT * FROM socialhub.users WHERE username='" + user + "';")
 
     myresult = mycursor.fetchall()
-
-    return myresult
+    if len(myresult) == 1:
+        return verify_password(myresult[0][3], pw)
+    return False
 
 
 @app.route('/login', methods=['post'])  # /login    POST    needs username and password     returns session-token
@@ -38,7 +40,7 @@ def login():
     user = request.form['user']
     pw = request.form['pw']
     correct = getcorrect(user, pw)
-    if len(correct) == 1:
+    if correct:
         code = randomString()
         sessions[code] = user
         out = {"error": False, "code": code}
@@ -174,6 +176,26 @@ def randomString(stringLength=10):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(stringLength))
 
+
+def hash_password(password):
+    """Hash a password for storing. https://www.vitoshacademy.com/hashing-passwords-in-python/"""
+    salt = hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii')
+    pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'),
+                                  salt, 100000)
+    pwdhash = binascii.hexlify(pwdhash)
+    return (salt + pwdhash).decode('ascii')
+
+
+def verify_password(stored_password, provided_password):
+    """Verify a stored password against one provided by user    https://www.vitoshacademy.com/hashing-passwords-in-python/"""
+    salt = stored_password[:64]
+    stored_password = stored_password[64:]
+    pwdhash = hashlib.pbkdf2_hmac('sha512',
+                                  provided_password.encode('utf-8'),
+                                  salt.encode('ascii'),
+                                  100000)
+    pwdhash = binascii.hexlify(pwdhash).decode('ascii')
+    return pwdhash == stored_password
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
