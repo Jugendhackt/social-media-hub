@@ -1,6 +1,7 @@
 import React from "react";
 import summary_icon from '../assets/summary.svg';
 import "../assets/Sidebar.css";
+import {Link} from "react-router-dom";
 
 //const Sidebar = ({ menuItems, styles }) => {
 class Sidebar extends React.Component {
@@ -12,7 +13,7 @@ class Sidebar extends React.Component {
             <div className="sidebarStyle">
                 <div className="logoStyle">{"SocialHub"}</div>
                 <div>
-                    <button className="signOutStyle">Sign {this.props.isLoggedIn ? "Out" : "In"}</button>
+                    <Link to={"/signin"}><button className="signOutStyle">Sign {this.props.isLoggedIn ? "Out" : "In"}</button></Link>
                     <button className="settingsStyle">Settings</button>
                 </div>
                 <p className="categoryLabelStyle">FEED</p>
